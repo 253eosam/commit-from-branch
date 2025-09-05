@@ -14,12 +14,8 @@ export function initHusky(cwd = process.cwd()) {
   }
 
   if (!fs.existsSync(hookPath)) {
-    const header = `#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-${HOOK_LINE}
-`;
-    fs.writeFileSync(hookPath, header, 'utf8');
+    const commandLine = HOOK_LINE
+    fs.writeFileSync(hookPath, commandLine, 'utf8');
     fs.chmodSync(hookPath, 0o755);
     console.log('[cfb] created .husky/prepare-commit-msg and added cfb hook');
     return 0;

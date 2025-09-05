@@ -4,7 +4,7 @@ import {
 } from "./chunk-PMXOKYP7.js";
 import {
   initHusky
-} from "./chunk-25XOHULR.js";
+} from "./chunk-4EHHYCRE.js";
 
 // src/cli.ts
 var argv = process.argv.slice(2);

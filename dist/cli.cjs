@@ -144,12 +144,8 @@ function initHusky(cwd = process.cwd()) {
     return 0;
   }
   if (!import_fs3.default.existsSync(hookPath)) {
-    const header = `#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-${HOOK_LINE}
-`;
-    import_fs3.default.writeFileSync(hookPath, header, "utf8");
+    const commandLine = HOOK_LINE;
+    import_fs3.default.writeFileSync(hookPath, commandLine, "utf8");
     import_fs3.default.chmodSync(hookPath, 493);
     console.log("[cfb] created .husky/prepare-commit-msg and added cfb hook");
     return 0;

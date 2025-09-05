@@ -1,8 +1,16 @@
 {
   "name": "@253eosam/commit-from-branch",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "Flexible commit message templating from branch name (ticket/segments) for Husky prepare-commit-msg",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/253eosam/commit-from-branch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/253eosam/commit-from-branch/issues"
+  },
+  "homepage": "https://github.com/253eosam/commit-from-branch#readme",
   "type": "module",
   "main": "./dist/core.cjs",
   "module": "./dist/core.js",
