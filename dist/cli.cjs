@@ -120,6 +120,20 @@ function run(opts = {}) {
   } else {
     const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (new RegExp("^\\s*" + esc(rendered), "i").test(msg0)) return 0;
+    if (ticket) {
+      const ticketRegex = new RegExp(`\\b${esc(ticket)}\\b`, "i");
+      if (ticketRegex.test(msg0)) {
+        log("exit: ticket already in message", ticket);
+        return 0;
+      }
+    }
+    if (segs[0] && segs[0] !== "HEAD") {
+      const segRegex = new RegExp(`\\b${esc(segs[0])}\\b`, "i");
+      if (segRegex.test(msg0)) {
+        log("exit: branch segment already in message", segs[0]);
+        return 0;
+      }
+    }
     lines[0] = rendered + msg0;
   }
   if (isDryRun(env)) {

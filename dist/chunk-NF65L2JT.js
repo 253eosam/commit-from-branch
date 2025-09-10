@@ -1,44 +1,10 @@
-"use strict";
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
 // src/core.ts
-var core_exports = {};
-__export(core_exports, {
-  run: () => run
-});
-module.exports = __toCommonJS(core_exports);
-var import_fs2 = __toESM(require("fs"), 1);
-var import_child_process = __toESM(require("child_process"), 1);
+import fs2 from "fs";
+import cp from "child_process";
 
 // src/config.ts
-var import_fs = __toESM(require("fs"), 1);
-var import_path = __toESM(require("path"), 1);
+import fs from "fs";
+import path from "path";
 var DEFAULTS = {
   includePatterns: ["*"],
   format: "[${ticket}] ${msg}",
@@ -47,7 +13,7 @@ var DEFAULTS = {
 };
 function loadConfig(cwd) {
   try {
-    const pkg = JSON.parse(import_fs.default.readFileSync(import_path.default.join(cwd, "package.json"), "utf-8"));
+    const pkg = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
     const pkgCfg = pkg.commitFromBranch;
     const cfg = pkgCfg ?? {};
     const include = cfg.includePattern ?? "*";
@@ -99,7 +65,7 @@ function run(opts = {}) {
   }
   let branch = "";
   try {
-    branch = import_child_process.default.execSync("git rev-parse --abbrev-ref HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    branch = cp.execSync("git rev-parse --abbrev-ref HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
   } catch {
   }
   if (!branch || branch === "HEAD") {
@@ -111,7 +77,7 @@ function run(opts = {}) {
     return 0;
   }
   const ticket = (branch.match(/([A-Z]+-\d+)/i)?.[1] || "").toUpperCase();
-  const body = import_fs2.default.readFileSync(COMMIT_MSG_PATH, "utf8");
+  const body = fs2.readFileSync(COMMIT_MSG_PATH, "utf8");
   const lines = body.split("\n");
   const msg0 = lines[0] ?? "";
   const segs = branch.split("/");
@@ -149,11 +115,11 @@ function run(opts = {}) {
     log("dry-run: not writing");
     return 0;
   }
-  import_fs2.default.writeFileSync(COMMIT_MSG_PATH, lines.join("\n"), "utf8");
+  fs2.writeFileSync(COMMIT_MSG_PATH, lines.join("\n"), "utf8");
   log("write ok");
   return 0;
 }
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
+
+export {
   run
-});
+};

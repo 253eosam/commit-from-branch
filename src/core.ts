@@ -66,6 +66,25 @@ export function run(opts: RunOptions = {}) {
   } else {
     const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (new RegExp('^\\s*' + esc(rendered), 'i').test(msg0)) return 0;
+    
+    // 추가 중복 체크: 메시지 안에 이미 티켓이나 브랜치 정보가 있는지 확인
+    if (ticket) {
+      const ticketRegex = new RegExp(`\\b${esc(ticket)}\\b`, 'i');
+      if (ticketRegex.test(msg0)) {
+        log('exit: ticket already in message', ticket);
+        return 0;
+      }
+    }
+    
+    // 브랜치의 첫 번째 세그먼트가 이미 메시지에 있는지 확인
+    if (segs[0] && segs[0] !== 'HEAD') {
+      const segRegex = new RegExp(`\\b${esc(segs[0])}\\b`, 'i');
+      if (segRegex.test(msg0)) {
+        log('exit: branch segment already in message', segs[0]);
+        return 0;
+      }
+    }
+    
     lines[0] = rendered + msg0;
   }
 
