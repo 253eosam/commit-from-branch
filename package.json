@@ -41,7 +41,11 @@
   "scripts": {
     "build": "tsup src/core.ts src/cli.ts src/init.ts --dts --format cjs,esm --out-dir dist",
     "test": "node --test test/*.test.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "release": "node scripts/release.js",
+    "release:patch": "npm version patch && npm run release",
+    "release:minor": "npm version minor && npm run release",
+    "release:major": "npm version major && npm run release"
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
