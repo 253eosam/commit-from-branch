@@ -30,7 +30,12 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/core.ts
 var core_exports = {};
 __export(core_exports, {
-  run: () => run
+  applyValidationRules: () => applyValidationRules,
+  createInitialState: () => createInitialState,
+  messageProcessors: () => messageProcessors,
+  processMessage: () => processMessage,
+  run: () => run,
+  validationRules: () => validationRules
 });
 module.exports = __toCommonJS(core_exports);
 var import_fs2 = __toESM(require("fs"), 1);
@@ -77,83 +82,190 @@ function renderTemplate(tpl, ctx) {
 }
 
 // src/core.ts
-var reStar = (pat) => new RegExp("^" + pat.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$", "i");
-var includeMatch = (s, pats) => pats.some((p) => reStar(p).test(s));
-var isDebug = (env) => /^(1|true|yes)$/i.test(String(env.BRANCH_PREFIX_DEBUG || ""));
-var isDryRun = (env) => /^(1|true|yes)$/i.test(String(env.BRANCH_PREFIX_DRYRUN || ""));
-function run(opts = {}) {
+var createRegexPattern = (pattern) => new RegExp("^" + pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$", "i");
+var matchesAnyPattern = (value, patterns) => patterns.some((pattern) => createRegexPattern(pattern).test(value));
+var parseEnvironmentFlag = (env, key) => /^(1|true|yes)$/i.test(String(env[key] || ""));
+var extractTicketFromBranch = (branch) => (branch.match(/([A-Z]+-\d+)/i)?.[1] || "").toUpperCase();
+var getCurrentBranch = () => {
+  try {
+    return import_child_process.default.execSync("git rev-parse --abbrev-ref HEAD", {
+      stdio: ["ignore", "pipe", "ignore"]
+    }).toString().trim();
+  } catch {
+    return "";
+  }
+};
+var escapeRegexSpecialChars = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var createLogger = (debug) => (...args) => {
+  if (debug) console.log("[cfb]", ...args);
+};
+var createInitialState = (opts = {}) => {
   const argv = opts.argv ?? process.argv;
   const env = opts.env ?? process.env;
   const cwd = opts.cwd ?? process.cwd();
-  const [, , COMMIT_MSG_PATH, SOURCE] = argv;
-  const debug = isDebug(env);
-  const log = (...a) => {
-    if (debug) console.log("[cfb]", ...a);
-  };
-  if (!COMMIT_MSG_PATH) return 0;
-  const cfg = loadConfig(cwd);
-  log("config", cfg);
-  if (SOURCE && cfg.exclude.some((x) => new RegExp(x, "i").test(String(SOURCE)))) {
-    log("exit: excluded by source", SOURCE);
-    return 0;
-  }
-  let branch = "";
+  const [, , commitMsgPath, source] = argv;
+  if (!commitMsgPath) return null;
+  const config = loadConfig(cwd);
+  const branch = getCurrentBranch();
+  const ticket = extractTicketFromBranch(branch);
+  const debug = parseEnvironmentFlag(env, "BRANCH_PREFIX_DEBUG");
+  const isDryRun = parseEnvironmentFlag(env, "BRANCH_PREFIX_DRYRUN");
+  let originalMessage = "";
+  let lines = [];
   try {
-    branch = import_child_process.default.execSync("git rev-parse --abbrev-ref HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    const body = import_fs2.default.readFileSync(commitMsgPath, "utf8");
+    lines = body.split("\n");
+    originalMessage = lines[0] ?? "";
   } catch {
   }
-  if (!branch || branch === "HEAD") {
-    log("exit: no branch or detached HEAD");
-    return 0;
-  }
-  if (!includeMatch(branch, cfg.includePatterns)) {
-    log("exit: includePattern mismatch", branch);
-    return 0;
-  }
-  const ticket = (branch.match(/([A-Z]+-\d+)/i)?.[1] || "").toUpperCase();
-  const body = import_fs2.default.readFileSync(COMMIT_MSG_PATH, "utf8");
-  const lines = body.split("\n");
-  const msg0 = lines[0] ?? "";
   const segs = branch.split("/");
-  const tpl = ticket ? cfg.format : cfg.fallbackFormat;
-  const ctx = { branch, segs, ticket, msg: msg0, body };
-  const hasMsgToken = /\$\{msg\}|\$\{body\}/.test(tpl);
-  const rendered = renderTemplate(tpl, ctx);
-  log("branch", branch, "ticket", ticket || "(none)");
-  log("tpl", tpl);
-  log("rendered", rendered);
+  const template = ticket ? config.format : config.fallbackFormat;
+  const context = { branch, segs, ticket, msg: originalMessage, body: lines.join("\n") };
+  const renderedMessage = renderTemplate(template, context);
+  return {
+    commitMsgPath,
+    source,
+    config,
+    branch,
+    ticket,
+    originalMessage,
+    lines,
+    context,
+    template,
+    renderedMessage,
+    shouldSkip: false,
+    isDryRun,
+    debug
+  };
+};
+var validationRules = [
+  {
+    name: "source-exclusion",
+    check: (state) => !state.source || !state.config.exclude.some(
+      (pattern) => new RegExp(pattern, "i").test(String(state.source))
+    ),
+    reason: "excluded by source"
+  },
+  {
+    name: "branch-existence",
+    check: (state) => Boolean(state.branch && state.branch !== "HEAD"),
+    reason: "no branch or detached HEAD"
+  },
+  {
+    name: "include-pattern-match",
+    check: (state) => matchesAnyPattern(state.branch, state.config.includePatterns),
+    reason: "includePattern mismatch"
+  }
+];
+var messageProcessors = [
+  {
+    name: "template-replacement",
+    shouldApply: (state) => /\$\{msg\}|\$\{body\}/.test(state.template),
+    process: (state) => {
+      if (state.originalMessage === state.renderedMessage) {
+        return { ...state, shouldSkip: true, skipReason: "message already matches template" };
+      }
+      return {
+        ...state,
+        lines: [state.renderedMessage, ...state.lines.slice(1)]
+      };
+    }
+  },
+  {
+    name: "prefix-addition",
+    shouldApply: (state) => !/\$\{msg\}|\$\{body\}/.test(state.template),
+    process: (state) => {
+      const escaped = escapeRegexSpecialChars(state.renderedMessage);
+      if (new RegExp("^\\s*" + escaped, "i").test(state.originalMessage)) {
+        return { ...state, shouldSkip: true, skipReason: "prefix already exists" };
+      }
+      if (state.ticket) {
+        const ticketRegex = new RegExp(`\\b${escapeRegexSpecialChars(state.ticket)}\\b`, "i");
+        if (ticketRegex.test(state.originalMessage)) {
+          return { ...state, shouldSkip: true, skipReason: "ticket already in message" };
+        }
+      }
+      const firstSeg = state.context.segs[0];
+      if (firstSeg && firstSeg !== "HEAD") {
+        const segRegex = new RegExp(`\\b${escapeRegexSpecialChars(firstSeg)}\\b`, "i");
+        if (segRegex.test(state.originalMessage)) {
+          return { ...state, shouldSkip: true, skipReason: "branch segment already in message" };
+        }
+      }
+      return {
+        ...state,
+        lines: [state.renderedMessage + state.originalMessage, ...state.lines.slice(1)]
+      };
+    }
+  }
+];
+var applyValidationRules = (state) => {
+  const log = createLogger(state.debug);
+  log("config", state.config);
+  for (const rule of validationRules) {
+    if (!rule.check(state)) {
+      log(`exit: ${rule.reason}`, rule.name);
+      return { ...state, shouldSkip: true, skipReason: rule.reason };
+    }
+  }
+  return state;
+};
+var logProcessingInfo = (state) => {
+  const log = createLogger(state.debug);
+  const hasMsgToken = /\$\{msg\}|\$\{body\}/.test(state.template);
+  log("branch", state.branch, "ticket", state.ticket || "(none)");
+  log("tpl", state.template);
+  log("rendered", state.renderedMessage);
   log("mode", hasMsgToken ? "replace-line" : "prefix-only");
-  if (hasMsgToken) {
-    if (msg0 === rendered) return 0;
-    lines[0] = rendered;
-  } else {
-    const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (new RegExp("^\\s*" + esc(rendered), "i").test(msg0)) return 0;
-    if (ticket) {
-      const ticketRegex = new RegExp(`\\b${esc(ticket)}\\b`, "i");
-      if (ticketRegex.test(msg0)) {
-        log("exit: ticket already in message", ticket);
-        return 0;
-      }
-    }
-    if (segs[0] && segs[0] !== "HEAD") {
-      const segRegex = new RegExp(`\\b${esc(segs[0])}\\b`, "i");
-      if (segRegex.test(msg0)) {
-        log("exit: branch segment already in message", segs[0]);
-        return 0;
-      }
-    }
-    lines[0] = rendered + msg0;
+  return state;
+};
+var processMessage = (state) => {
+  if (state.shouldSkip) return state;
+  const applicableProcessor = messageProcessors.find(
+    (processor) => processor.shouldApply(state)
+  );
+  if (!applicableProcessor) {
+    return { ...state, shouldSkip: true, skipReason: "no applicable processor" };
   }
-  if (isDryRun(env)) {
+  return applicableProcessor.process(state);
+};
+var writeResult = (state) => {
+  const log = createLogger(state.debug);
+  if (state.shouldSkip) {
+    log(`skip: ${state.skipReason}`);
+    return state;
+  }
+  if (state.isDryRun) {
     log("dry-run: not writing");
-    return 0;
+    return state;
   }
-  import_fs2.default.writeFileSync(COMMIT_MSG_PATH, lines.join("\n"), "utf8");
-  log("write ok");
+  try {
+    import_fs2.default.writeFileSync(state.commitMsgPath, state.lines.join("\n"), "utf8");
+    log("write ok");
+  } catch (error) {
+    log("write error:", error);
+  }
+  return state;
+};
+var pipe = (...functions) => (value) => functions.reduce((acc, fn) => fn(acc), value);
+function run(opts = {}) {
+  const initialState = createInitialState(opts);
+  if (!initialState) return 0;
+  const pipeline = pipe(
+    applyValidationRules,
+    logProcessingInfo,
+    processMessage,
+    writeResult
+  );
+  pipeline(initialState);
   return 0;
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  run
+  applyValidationRules,
+  createInitialState,
+  messageProcessors,
+  processMessage,
+  run,
+  validationRules
 });

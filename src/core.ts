@@ -2,98 +2,265 @@ import fs from 'fs';
 import cp from 'child_process';
 import { loadConfig } from './config';
 import { renderTemplate } from './tokens';
-import type { RunOptions, Context } from './types';
+import type { RunOptions, ProcessingState, ValidationRule, MessageProcessor, Context } from './types';
 
-const reStar = (pat: string) =>
-  new RegExp('^' + pat.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$', 'i');
-const includeMatch = (s: string, pats: string[]) => pats.some(p => reStar(p).test(s));
+// =============================================================================
+// 유틸리티 함수들 (순수 함수)
+// =============================================================================
 
-const isDebug = (env: NodeJS.ProcessEnv) => /^(1|true|yes)$/i.test(String(env.BRANCH_PREFIX_DEBUG || ''));
-const isDryRun = (env: NodeJS.ProcessEnv) => /^(1|true|yes)$/i.test(String(env.BRANCH_PREFIX_DRYRUN || ''));
+const createRegexPattern = (pattern: string): RegExp =>
+  new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$', 'i');
 
-export function run(opts: RunOptions = {}) {
+const matchesAnyPattern = (value: string, patterns: string[]): boolean =>
+  patterns.some(pattern => createRegexPattern(pattern).test(value));
+
+const parseEnvironmentFlag = (env: NodeJS.ProcessEnv, key: string): boolean =>
+  /^(1|true|yes)$/i.test(String(env[key] || ''));
+
+const extractTicketFromBranch = (branch: string): string =>
+  (branch.match(/([A-Z]+-\d+)/i)?.[1] || '').toUpperCase();
+
+const getCurrentBranch = (): string => {
+  try {
+    return cp.execSync('git rev-parse --abbrev-ref HEAD', { 
+      stdio: ['ignore', 'pipe', 'ignore'] 
+    }).toString().trim();
+  } catch {
+    return '';
+  }
+};
+
+const escapeRegexSpecialChars = (str: string): string =>
+  str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const createLogger = (debug: boolean) => 
+  (...args: any[]) => { if (debug) console.log('[cfb]', ...args); };
+
+// =============================================================================
+// 상태 초기화 함수
+// =============================================================================
+
+const createInitialState = (opts: RunOptions = {}): ProcessingState | null => {
   const argv = opts.argv ?? process.argv;
   const env = opts.env ?? process.env;
   const cwd = opts.cwd ?? process.cwd();
-  const [, , COMMIT_MSG_PATH, SOURCE] = argv;
+  const [, , commitMsgPath, source] = argv;
 
-  const debug = isDebug(env);
-  const log = (...a: any[]) => { if (debug) console.log('[cfb]', ...a); };
+  if (!commitMsgPath) return null;
 
-  if (!COMMIT_MSG_PATH) return 0;
+  const config = loadConfig(cwd);
+  const branch = getCurrentBranch();
+  const ticket = extractTicketFromBranch(branch);
+  const debug = parseEnvironmentFlag(env, 'BRANCH_PREFIX_DEBUG');
+  const isDryRun = parseEnvironmentFlag(env, 'BRANCH_PREFIX_DRYRUN');
 
-  const cfg = loadConfig(cwd);
-  log('config', cfg);
-
-  if (SOURCE && cfg.exclude.some(x => new RegExp(x, 'i').test(String(SOURCE)))) {
-    log('exit: excluded by source', SOURCE);
-    return 0;
-  }
-
-  let branch = '';
+  let originalMessage = '';
+  let lines: string[] = [];
   try {
-    branch = cp.execSync('git rev-parse --abbrev-ref HEAD', { stdio: ['ignore','pipe','ignore'] }).toString().trim();
-  } catch {}
-  if (!branch || branch === 'HEAD') {
-    log('exit: no branch or detached HEAD');
-    return 0;
+    const body = fs.readFileSync(commitMsgPath, 'utf8');
+    lines = body.split('\n');
+    originalMessage = lines[0] ?? '';
+  } catch {
+    // 파일을 읽을 수 없는 경우는 나중에 검증 단계에서 처리
   }
 
-  if (!includeMatch(branch, cfg.includePatterns)) {
-    log('exit: includePattern mismatch', branch);
-    return 0;
-  }
-
-  const ticket = (branch.match(/([A-Z]+-\d+)/i)?.[1] || '').toUpperCase();
-  const body = fs.readFileSync(COMMIT_MSG_PATH, 'utf8');
-  const lines = body.split('\n');
-  const msg0 = lines[0] ?? '';
   const segs = branch.split('/');
+  const template = ticket ? config.format : config.fallbackFormat;
+  const context: Context = { branch, segs, ticket, msg: originalMessage, body: lines.join('\n') };
+  const renderedMessage = renderTemplate(template, context);
 
-  const tpl = ticket ? cfg.format : cfg.fallbackFormat;
-  const ctx: Context = { branch, segs, ticket, msg: msg0, body };
-  const hasMsgToken = /\$\{msg\}|\$\{body\}/.test(tpl);
-  const rendered = renderTemplate(tpl, ctx);
+  return {
+    commitMsgPath,
+    source,
+    config,
+    branch,
+    ticket,
+    originalMessage,
+    lines,
+    context,
+    template,
+    renderedMessage,
+    shouldSkip: false,
+    isDryRun,
+    debug
+  };
+};
 
-  log('branch', branch, 'ticket', ticket || '(none)');
-  log('tpl', tpl);
-  log('rendered', rendered);
+// =============================================================================
+// 검증 규칙들 (선언적)
+// =============================================================================
+
+const validationRules: ValidationRule[] = [
+  {
+    name: 'source-exclusion',
+    check: (state) => !state.source || !state.config.exclude.some(
+      pattern => new RegExp(pattern, 'i').test(String(state.source))
+    ),
+    reason: 'excluded by source'
+  },
+  {
+    name: 'branch-existence',
+    check: (state) => Boolean(state.branch && state.branch !== 'HEAD'),
+    reason: 'no branch or detached HEAD'
+  },
+  {
+    name: 'include-pattern-match',
+    check: (state) => matchesAnyPattern(state.branch, state.config.includePatterns),
+    reason: 'includePattern mismatch'
+  }
+];
+
+// =============================================================================
+// 메시지 처리기들 (선언적)
+// =============================================================================
+
+const messageProcessors: MessageProcessor[] = [
+  {
+    name: 'template-replacement',
+    shouldApply: (state) => /\$\{msg\}|\$\{body\}/.test(state.template),
+    process: (state) => {
+      if (state.originalMessage === state.renderedMessage) {
+        return { ...state, shouldSkip: true, skipReason: 'message already matches template' };
+      }
+      return {
+        ...state,
+        lines: [state.renderedMessage, ...state.lines.slice(1)]
+      };
+    }
+  },
+  {
+    name: 'prefix-addition',
+    shouldApply: (state) => !/\$\{msg\}|\$\{body\}/.test(state.template),
+    process: (state) => {
+      const escaped = escapeRegexSpecialChars(state.renderedMessage);
+      
+      // 기존 프리픽스가 이미 있는지 확인
+      if (new RegExp('^\\s*' + escaped, 'i').test(state.originalMessage)) {
+        return { ...state, shouldSkip: true, skipReason: 'prefix already exists' };
+      }
+      
+      // 티켓 번호가 이미 메시지에 있는지 확인
+      if (state.ticket) {
+        const ticketRegex = new RegExp(`\\b${escapeRegexSpecialChars(state.ticket)}\\b`, 'i');
+        if (ticketRegex.test(state.originalMessage)) {
+          return { ...state, shouldSkip: true, skipReason: 'ticket already in message' };
+        }
+      }
+      
+      // 브랜치 세그먼트가 이미 메시지에 있는지 확인
+      const firstSeg = state.context.segs[0];
+      if (firstSeg && firstSeg !== 'HEAD') {
+        const segRegex = new RegExp(`\\b${escapeRegexSpecialChars(firstSeg)}\\b`, 'i');
+        if (segRegex.test(state.originalMessage)) {
+          return { ...state, shouldSkip: true, skipReason: 'branch segment already in message' };
+        }
+      }
+      
+      return {
+        ...state,
+        lines: [state.renderedMessage + state.originalMessage, ...state.lines.slice(1)]
+      };
+    }
+  }
+];
+
+// =============================================================================
+// 처리 파이프라인
+// =============================================================================
+
+const applyValidationRules = (state: ProcessingState): ProcessingState => {
+  const log = createLogger(state.debug);
+  log('config', state.config);
+  
+  for (const rule of validationRules) {
+    if (!rule.check(state)) {
+      log(`exit: ${rule.reason}`, rule.name);
+      return { ...state, shouldSkip: true, skipReason: rule.reason };
+    }
+  }
+  return state;
+};
+
+const logProcessingInfo = (state: ProcessingState): ProcessingState => {
+  const log = createLogger(state.debug);
+  const hasMsgToken = /\$\{msg\}|\$\{body\}/.test(state.template);
+  
+  log('branch', state.branch, 'ticket', state.ticket || '(none)');
+  log('tpl', state.template);
+  log('rendered', state.renderedMessage);
   log('mode', hasMsgToken ? 'replace-line' : 'prefix-only');
+  
+  return state;
+};
 
-  if (hasMsgToken) {
-    if (msg0 === rendered) return 0;
-    lines[0] = rendered;
-  } else {
-    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (new RegExp('^\\s*' + esc(rendered), 'i').test(msg0)) return 0;
-    
-    // 추가 중복 체크: 메시지 안에 이미 티켓이나 브랜치 정보가 있는지 확인
-    if (ticket) {
-      const ticketRegex = new RegExp(`\\b${esc(ticket)}\\b`, 'i');
-      if (ticketRegex.test(msg0)) {
-        log('exit: ticket already in message', ticket);
-        return 0;
-      }
-    }
-    
-    // 브랜치의 첫 번째 세그먼트가 이미 메시지에 있는지 확인
-    if (segs[0] && segs[0] !== 'HEAD') {
-      const segRegex = new RegExp(`\\b${esc(segs[0])}\\b`, 'i');
-      if (segRegex.test(msg0)) {
-        log('exit: branch segment already in message', segs[0]);
-        return 0;
-      }
-    }
-    
-    lines[0] = rendered + msg0;
+const processMessage = (state: ProcessingState): ProcessingState => {
+  if (state.shouldSkip) return state;
+  
+  const applicableProcessor = messageProcessors.find(processor => 
+    processor.shouldApply(state)
+  );
+  
+  if (!applicableProcessor) {
+    return { ...state, shouldSkip: true, skipReason: 'no applicable processor' };
   }
+  
+  return applicableProcessor.process(state);
+};
 
-  if (isDryRun(env)) {
+const writeResult = (state: ProcessingState): ProcessingState => {
+  const log = createLogger(state.debug);
+  
+  if (state.shouldSkip) {
+    log(`skip: ${state.skipReason}`);
+    return state;
+  }
+  
+  if (state.isDryRun) {
     log('dry-run: not writing');
-    return 0;
+    return state;
   }
+  
+  try {
+    fs.writeFileSync(state.commitMsgPath, state.lines.join('\n'), 'utf8');
+    log('write ok');
+  } catch (error) {
+    log('write error:', error);
+  }
+  
+  return state;
+};
 
-  fs.writeFileSync(COMMIT_MSG_PATH, lines.join('\n'), 'utf8');
-  log('write ok');
+// =============================================================================
+// 메인 함수 (함수형 파이프라인)
+// =============================================================================
+
+const pipe = <T>(...functions: Array<(arg: T) => T>) => (value: T): T =>
+  functions.reduce((acc, fn) => fn(acc), value);
+
+export function run(opts: RunOptions = {}): number {
+  const initialState = createInitialState(opts);
+  
+  if (!initialState) return 0;
+  
+  const pipeline = pipe(
+    applyValidationRules,
+    logProcessingInfo,
+    processMessage,
+    writeResult
+  );
+  
+  pipeline(initialState);
   return 0;
 }
+
+// =============================================================================
+// 외부에서 사용할 수 있는 유틸리티 함수들 (테스트용)
+// =============================================================================
+
+export {
+  createInitialState,
+  validationRules,
+  messageProcessors,
+  applyValidationRules,
+  processMessage
+};

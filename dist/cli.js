@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   run
-} from "./chunk-NF65L2JT.js";
+} from "./chunk-NKJYIWBD.js";
 import {
   initHusky
 } from "./chunk-4EHHYCRE.js";
