@@ -2,7 +2,6 @@
 
 import { execSync } from 'child_process';
 import fs from 'fs';
-import path from 'path';
 
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const currentVersion = packageJson.version;
