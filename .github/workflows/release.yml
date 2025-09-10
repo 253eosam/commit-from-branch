@@ -12,6 +12,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write
       
     steps:
       - name: Checkout
@@ -19,11 +20,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate tag format
+        run: |
+          if [[ ! $GITHUB_REF_NAME =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "❌ Invalid tag format: $GITHUB_REF_NAME"
+            echo "Expected format: v{major}.{minor}.{patch} (e.g., v1.2.3)"
+            exit 1
+          fi
+          echo "✅ Valid tag format: $GITHUB_REF_NAME"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -31,39 +42,73 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Build
+      - name: Build project
         run: npm run build
 
       - name: Extract version from tag
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+
+      - name: Verify package.json version matches tag
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "package.json: $PACKAGE_VERSION"
+            echo "Git tag: $TAG_VERSION"
+            exit 1
+          fi
+          echo "✅ Version verified: $PACKAGE_VERSION"
 
       - name: Generate changelog
         id: changelog
         run: |
-          # Extract changelog for current version
+          VERSION="${{ steps.version.outputs.version }}"
           if [ -f "CHANGELOG.md" ]; then
-            # Get content between current version and previous version
-            awk '/^## \[${{ steps.version.outputs.version }}\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md > current_changelog.md
-            echo "changelog<<EOF" >> $GITHUB_OUTPUT
-            cat current_changelog.md >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            # Extract changelog for current version
+            awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md > current_changelog.md
+            if [ -s current_changelog.md ]; then
+              echo "changelog<<EOF" >> $GITHUB_OUTPUT
+              cat current_changelog.md >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "changelog=🚀 Release $VERSION" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "changelog=Release ${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+            echo "changelog=🚀 Release $VERSION" >> $GITHUB_OUTPUT
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: "🚀 Release ${{ steps.version.outputs.version }}"
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "🚀 Release v${{ steps.version.outputs.version }}"
           body: ${{ steps.changelog.outputs.changelog }}
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to NPM
-        run: npm publish
+        run: |
+          echo "📦 Publishing to NPM..."
+          if [[ "${{ steps.version.outputs.version }}" == *"-"* ]]; then
+            echo "🔄 Pre-release version detected, publishing with 'next' tag"
+            npm publish --tag next
+          else
+            echo "✅ Stable version, publishing with 'latest' tag"
+            npm publish
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Success notification
+        run: |
+          echo "🎉 Release completed successfully!"
+          echo "📦 Package: https://www.npmjs.com/package/@253eosam/commit-from-branch"
+          echo "🏷️  Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/${{ steps.version.outputs.tag }}"

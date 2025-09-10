@@ -174,7 +174,8 @@ const applyValidationRules = (state: ProcessingState): ProcessingState => {
   
   for (const rule of validationRules) {
     if (!rule.check(state)) {
-      log(`exit: ${rule.reason}`, rule.name);
+      const contextInfo = state.ticket || state.branch || 'unknown';
+      log(`exit: ${rule.reason}`, `[${rule.name}]`, `context: ${contextInfo}`);
       return { ...state, shouldSkip: true, skipReason: rule.reason };
     }
   }
@@ -185,10 +186,10 @@ const logProcessingInfo = (state: ProcessingState): ProcessingState => {
   const log = createLogger(state.debug);
   const hasMsgToken = /\$\{msg\}|\$\{body\}/.test(state.template);
   
-  log('branch', state.branch, 'ticket', state.ticket || '(none)');
-  log('tpl', state.template);
-  log('rendered', state.renderedMessage);
-  log('mode', hasMsgToken ? 'replace-line' : 'prefix-only');
+  log('branch', `${state.branch}`, 'ticket', `${state.ticket || '(none)'}`, 'segs', `[${state.context.segs.join(', ')}]`);
+  log('tpl', `"${state.template}"`);
+  log('rendered', `"${state.renderedMessage}"`);
+  log('mode', hasMsgToken ? 'replace-line' : 'prefix-only', `msg: "${state.originalMessage}"`);
   
   return state;
 };
@@ -211,20 +212,21 @@ const writeResult = (state: ProcessingState): ProcessingState => {
   const log = createLogger(state.debug);
   
   if (state.shouldSkip) {
-    log(`skip: ${state.skipReason}`);
+    const contextInfo = state.ticket || state.context.segs[0] || 'unknown';
+    log(`skip: ${state.skipReason}`, `[${contextInfo}]`);
     return state;
   }
   
   if (state.isDryRun) {
-    log('dry-run: not writing');
+    log('dry-run: not writing', `[${state.context.branch}]`);
     return state;
   }
   
   try {
     fs.writeFileSync(state.commitMsgPath, state.lines.join('\n'), 'utf8');
-    log('write ok');
+    log('write ok', `[${state.context.branch}]`, `-> "${state.lines[0]}"`);
   } catch (error) {
-    log('write error:', error);
+    log('write error:', error, `[${state.context.branch}]`);
   }
   
   return state;
