@@ -255,6 +255,23 @@
   color: #666;
 }
 
+.scenario-category {
+  margin-bottom: 3rem;
+}
+
+.scenario-category:last-child {
+  margin-bottom: 0;
+}
+
+.category-title {
+  margin: 0 0 1.5rem 0;
+  color: #374151;
+  font-size: 1.3rem;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  border-bottom: 3px solid #e5e7eb;
+}
+
 .examples-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -266,6 +283,9 @@
   border-radius: 8px;
   padding: 1.25rem;
   transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .example-card:hover {
@@ -286,6 +306,7 @@
 }
 
 .example-details {
+  flex: 1;
   margin-bottom: 1.5rem;
 }
 
@@ -317,6 +338,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
+  margin-top: auto;
 }
 
 .example-apply-btn:hover {
