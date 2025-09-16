@@ -1,6 +1,6 @@
 import {
   initHusky
-} from "./chunk-4EHHYCRE.js";
+} from "./chunk-SZTIE65V.js";
 export {
   initHusky
 };

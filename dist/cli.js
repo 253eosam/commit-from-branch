@@ -4,14 +4,20 @@ import {
 } from "./chunk-EMG7656X.js";
 import {
   initHusky
-} from "./chunk-4EHHYCRE.js";
+} from "./chunk-SZTIE65V.js";
 
 // src/cli.ts
-var argv = process.argv.slice(2);
-var cmd = argv[0];
-if (cmd === "init") {
-  process.exit(initHusky(process.cwd()) || 0);
-} else {
-  const passthroughArgv = [process.argv[0], process.argv[1], ...argv];
-  process.exit(run({ argv: passthroughArgv }) || 0);
-}
+var createCommandHandlers = (argv) => ({
+  init: () => initHusky(process.cwd()) || 0,
+  default: () => {
+    const passthroughArgv = [process.argv[0], process.argv[1], ...argv];
+    return run({ argv: passthroughArgv }) || 0;
+  }
+});
+var executeCommand = (argv) => {
+  const [cmd] = argv;
+  const handlers = createCommandHandlers(argv);
+  const handler = handlers[cmd] || handlers.default;
+  return handler();
+};
+process.exit(executeCommand(process.argv.slice(2)));
