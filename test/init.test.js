@@ -21,9 +21,9 @@ describe('initHusky', () => {
     }
   });
 
-  test('should return 0 when .husky directory does not exist', () => {
+  test('should return 1 when .husky directory does not exist', () => {
     const result = initHusky(tempDir);
-    assert.strictEqual(result, 0);
+    assert.strictEqual(result, 1);
   });
 
   test('should create new hook file when .husky exists but no hook file', () => {
