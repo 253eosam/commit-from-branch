@@ -1,7 +1,21 @@
 {
   "name": "@253eosam/commit-from-branch",
   "version": "0.2.4",
-  "description": "Flexible commit message templating from branch name (ticket/segments) for Husky prepare-commit-msg",
+  "description": "🚀 Flexible commit message templating from branch name (ticket/segments) for Husky's prepare-commit-msg hook. Automatically extracts Jira-style tickets and supports customizable templates.",
+  "keywords": [
+    "commit",
+    "git",
+    "husky",
+    "commit-msg",
+    "jira",
+    "ticket",
+    "branch",
+    "template",
+    "prepare-commit-msg",
+    "automation",
+    "typescript",
+    "cli"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,7 +24,11 @@
   "bugs": {
     "url": "https://github.com/253eosam/commit-from-branch/issues"
   },
-  "homepage": "https://github.com/253eosam/commit-from-branch#readme",
+  "homepage": "https://253eosam.github.io/commit-from-branch/",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/253eosam"
+  },
   "type": "module",
   "main": "./dist/core.cjs",
   "module": "./dist/core.js",
