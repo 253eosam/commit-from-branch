@@ -68,16 +68,41 @@ jobs:
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          CHANGELOG_CONTENT=""
+
+          # Try to extract from CHANGELOG.md first
           if [ -f "CHANGELOG.md" ]; then
             # Extract changelog for current version
             awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md > current_changelog.md
             if [ -s current_changelog.md ]; then
-              echo "changelog<<EOF" >> $GITHUB_OUTPUT
-              cat current_changelog.md >> $GITHUB_OUTPUT
-              echo "EOF" >> $GITHUB_OUTPUT
-            else
-              echo "changelog=🚀 Release $VERSION" >> $GITHUB_OUTPUT
+              echo "📋 **What's Changed**" > release_notes.md
+              echo "" >> release_notes.md
+              cat current_changelog.md >> release_notes.md
+              echo "" >> release_notes.md
             fi
+          fi
+
+          # Generate commit-based changelog since last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            echo "## 📝 Commits since $PREV_TAG" >> release_notes.md
+            echo "" >> release_notes.md
+            git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+
+          # Add package info
+          echo "" >> release_notes.md
+          echo "## 📦 Installation" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "\`\`\`bash" >> release_notes.md
+          echo "npm install @253eosam/commit-from-branch@$VERSION" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+
+          if [ -f "release_notes.md" ]; then
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            cat release_notes.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           else
             echo "changelog=🚀 Release $VERSION" >> $GITHUB_OUTPUT
           fi

@@ -2,7 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.0] - 2025-01-10
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.2.3] - 2024-09-16
+
+### ✨ New Features
+- **Peer Dependency Support**: Added husky@^9.0.0 as peer dependency for clearer version requirements
+- **Enhanced Error Messages**: Improved installation guidance with clear step-by-step instructions
+
+### 🔧 Code Quality Improvements
+- **Declarative Architecture**: Refactored cli.ts and init.ts from procedural to declarative approach
+- **Strategy Pattern**: Implemented strategy pattern for Husky initialization scenarios
+- **Command Handler Pattern**: Clean command routing in CLI with declarative handlers
+- **Simplified Validation**: Leveraged npm's peer dependency warnings instead of complex version checking
+
+### 🧪 Testing
+- **Updated Test Suite**: Fixed test expectations to match new behavior
+- **Integration Tests**: All 31 tests passing with improved coverage
+
+### 📚 Documentation
+- **CLAUDE.md**: Added comprehensive guide for future Claude Code instances
+- **Architecture Documentation**: Detailed explanation of functional pipeline and design patterns
+
+## [0.2.0] - 2024-09-16
 
 ### 🎉 Major Refactoring - Declarative Architecture
 

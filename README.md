@@ -20,11 +20,14 @@ Automatically formats your commit messages based on your branch name, extracting
 npm install @253eosam/commit-from-branch --save-dev
 ```
 
+> **Note**: This package requires Husky v9 as a peer dependency. npm will automatically warn you if it's not installed.
+
 ## Quick Start
 
-1. **Install Husky** (if not already installed):
+1. **Install Husky v9** (if not already installed):
 
 ```bash
+npm install --save-dev husky@^9.0.0
 npx husky init
 ```
 
@@ -198,7 +201,7 @@ initHusky("/path/to/repo");
 
 - Node.js >= 16
 - Git repository
-- Husky (for automatic setup)
+- Husky v9 (peer dependency)
 
 ## Contributing
 
