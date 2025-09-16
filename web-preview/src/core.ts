@@ -1,16 +1,8 @@
-// Browser-compatible version of commit-from-branch core logic
-import { renderTemplate } from './tokens';
+// Browser-compatible wrapper for commit-from-branch core logic
+import type { ProcessingState, CommitFromBranchConfig as OriginalConfig } from '@253eosam/commit-from-branch';
 
-// =============================================================================
-// Types (adapted from original types.ts)
-// =============================================================================
-
-export type CommitFromBranchConfig = {
-  includePattern?: string | string[];
-  format?: string;
-  fallbackFormat?: string;
-  exclude?: string[];
-};
+// Re-export types for compatibility
+export type CommitFromBranchConfig = OriginalConfig;
 
 export type Context = {
   branch: string;
@@ -27,33 +19,10 @@ export type ProcessedConfig = CommitFromBranchConfig & {
   exclude: string[];
 };
 
-export type PreviewState = {
-  config: ProcessedConfig;
-  branch: string;
-  ticket: string;
-  originalMessage: string;
-  lines: string[];
-  context: Context;
-  template: string;
-  renderedMessage: string;
-  shouldSkip: boolean;
-  skipReason?: string;
-};
-
-export type ValidationRule = {
-  name: string;
-  check: (state: PreviewState) => boolean;
-  reason: string;
-};
-
-export type MessageProcessor = {
-  name: string;
-  shouldApply: (state: PreviewState) => boolean;
-  process: (state: PreviewState) => PreviewState;
-};
+export type PreviewState = ProcessingState;
 
 // =============================================================================
-// Utility Functions (adapted for browser)
+// Browser-specific adaptations
 // =============================================================================
 
 const createRegexPattern = (pattern: string): RegExp =>
@@ -68,156 +37,70 @@ const extractTicketFromBranch = (branch: string): string =>
 const escapeRegexSpecialChars = (str: string): string =>
   str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const normalizeConfig = (config: CommitFromBranchConfig): ProcessedConfig => {
-  const includePattern = config.includePattern || ['*'];
-  const includePatterns = Array.isArray(includePattern) ? includePattern : [includePattern];
+// Simple template renderer (extracted from main module logic)
+export const renderTemplate = (tpl: string, ctx: Context): string => {
+  let out = String(tpl);
 
-  return {
-    ...config,
-    includePatterns,
-    format: config.format || '${ticket}: ${msg}',
-    fallbackFormat: config.fallbackFormat || '${segs[0]}: ${msg}',
-    exclude: config.exclude || []
-  };
+  // ${prefix:n} → first n segments joined with '/'
+  out = out.replace(/\$\{prefix:(\d+)\}/g, (_m, n) => {
+    const k = Math.max(0, parseInt(n, 10) || 0);
+    return ctx.segs.slice(0, k).join('/') || '';
+  });
+
+  // ${seg0}, ${seg1}, ...
+  out = out.replace(/\$\{seg(\d+)\}/g, (_m, i) => {
+    const idx = parseInt(i, 10) || 0;
+    return ctx.segs[idx] || '';
+  });
+
+  return out
+    .replace(/\$\{ticket\}/g, ctx.ticket || '')
+    .replace(/\$\{branch\}/g, ctx.branch || '')
+    .replace(/\$\{segments\}/g, ctx.segs.join('/'))
+    .replace(/\$\{msg\}/g, ctx.msg || '')
+    .replace(/\$\{body\}/g, ctx.body || '');
 };
 
 // =============================================================================
-// State Creation
+// Preview State Creation (browser-adapted)
 // =============================================================================
 
 export const createPreviewState = (
   config: CommitFromBranchConfig,
   branch: string,
   originalMessage: string = ''
-): PreviewState => {
-  const normalizedConfig = normalizeConfig(config);
+): ProcessingState => {
   const ticket = extractTicketFromBranch(branch);
-  const lines = originalMessage.split('\n');
   const segs = branch.split('/');
-  
-  const template = ticket ? normalizedConfig.format : normalizedConfig.fallbackFormat;
-  const context: Context = { 
-    branch, 
-    segs, 
-    ticket, 
-    msg: originalMessage, 
-    body: lines.join('\n') 
+  const lines = originalMessage.split('\n');
+
+  const template = ticket ? config.format || '[${ticket}] ${msg}' : config.fallbackFormat || '[${seg0}] ${msg}';
+  const context: Context = {
+    branch,
+    segs,
+    ticket,
+    msg: originalMessage,
+    body: lines.join('\n')
   };
+
   const renderedMessage = renderTemplate(template, context);
 
   return {
-    config: normalizedConfig,
+    config: config as any, // Type compatibility
+    commitMsgPath: '/mock/path', // Browser mock
+    source: undefined,
     branch,
     ticket,
     originalMessage,
     lines,
-    context,
+    context: context as any, // Type compatibility
     template,
     renderedMessage,
-    shouldSkip: false
+    shouldSkip: false,
+    isDryRun: false,
+    debug: false
   };
 };
-
-// =============================================================================
-// Validation Rules (adapted from original)
-// =============================================================================
-
-export const validationRules: ValidationRule[] = [
-  {
-    name: 'branch-existence',
-    check: (state) => Boolean(state.branch && state.branch !== 'HEAD'),
-    reason: 'no branch or detached HEAD'
-  },
-  {
-    name: 'include-pattern-match',
-    check: (state) => matchesAnyPattern(state.branch, state.config.includePatterns),
-    reason: 'includePattern mismatch'
-  }
-];
-
-// =============================================================================
-// Message Processors (adapted from original)
-// =============================================================================
-
-export const messageProcessors: MessageProcessor[] = [
-  {
-    name: 'template-replacement',
-    shouldApply: (state) => /\$\{msg\}|\$\{body\}/.test(state.template),
-    process: (state) => {
-      if (state.originalMessage === state.renderedMessage) {
-        return { ...state, shouldSkip: true, skipReason: 'message already matches template' };
-      }
-      return {
-        ...state,
-        lines: [state.renderedMessage, ...state.lines.slice(1)]
-      };
-    }
-  },
-  {
-    name: 'prefix-addition',
-    shouldApply: (state) => !/\$\{msg\}|\$\{body\}/.test(state.template),
-    process: (state) => {
-      const escaped = escapeRegexSpecialChars(state.renderedMessage);
-      
-      // Check if prefix already exists
-      if (new RegExp('^\\s*' + escaped, 'i').test(state.originalMessage)) {
-        return { ...state, shouldSkip: true, skipReason: 'prefix already exists' };
-      }
-      
-      // Check if ticket is already in message
-      if (state.ticket) {
-        const ticketRegex = new RegExp(`\\b${escapeRegexSpecialChars(state.ticket)}\\b`, 'i');
-        if (ticketRegex.test(state.originalMessage)) {
-          return { ...state, shouldSkip: true, skipReason: 'ticket already in message' };
-        }
-      }
-      
-      // Check if branch segment is already in message
-      const firstSeg = state.context.segs[0];
-      if (firstSeg && firstSeg !== 'HEAD') {
-        const segRegex = new RegExp(`\\b${escapeRegexSpecialChars(firstSeg)}\\b`, 'i');
-        if (segRegex.test(state.originalMessage)) {
-          return { ...state, shouldSkip: true, skipReason: 'branch segment already in message' };
-        }
-      }
-      
-      return {
-        ...state,
-        lines: [state.renderedMessage + state.originalMessage, ...state.lines.slice(1)]
-      };
-    }
-  }
-];
-
-// =============================================================================
-// Processing Pipeline
-// =============================================================================
-
-const applyValidationRules = (state: PreviewState): PreviewState => {
-  for (const rule of validationRules) {
-    if (!rule.check(state)) {
-      return { ...state, shouldSkip: true, skipReason: rule.reason };
-    }
-  }
-  return state;
-};
-
-const processMessage = (state: PreviewState): PreviewState => {
-  if (state.shouldSkip) return state;
-  
-  const applicableProcessor = messageProcessors.find(processor => 
-    processor.shouldApply(state)
-  );
-  
-  if (!applicableProcessor) {
-    return { ...state, shouldSkip: true, skipReason: 'no applicable processor' };
-  }
-  
-  return applicableProcessor.process(state);
-};
-
-const pipe = <T>(...functions: Array<(arg: T) => T>) => (value: T): T =>
-  functions.reduce((acc, fn) => fn(acc), value);
 
 // =============================================================================
 // Main Preview Function
@@ -227,24 +110,58 @@ export const generatePreview = (
   config: CommitFromBranchConfig,
   branch: string,
   originalMessage: string = ''
-): PreviewState => {
-  const initialState = createPreviewState(config, branch, originalMessage);
-  
-  const pipeline = pipe(
-    applyValidationRules,
-    processMessage
-  );
-  
-  return pipeline(initialState);
+): ProcessingState => {
+  // Create browser-compatible preview state
+  const state = createPreviewState(config, branch, originalMessage);
+
+  // Apply basic validation
+  if (!branch || branch === 'HEAD') {
+    return { ...state, shouldSkip: true, skipReason: 'no branch or detached HEAD' };
+  }
+
+  const includePatterns = Array.isArray(config.includePattern)
+    ? config.includePattern
+    : [config.includePattern || '*'];
+
+  if (!matchesAnyPattern(branch, includePatterns)) {
+    return { ...state, shouldSkip: true, skipReason: 'includePattern mismatch' };
+  }
+
+  // Apply message processing logic
+  const hasMessageToken = /\$\{msg\}|\$\{body\}/.test(state.template);
+
+  if (hasMessageToken) {
+    if (originalMessage === state.renderedMessage) {
+      return { ...state, shouldSkip: true, skipReason: 'message already matches template' };
+    }
+    return { ...state, lines: [state.renderedMessage, ...state.lines.slice(1)] };
+  } else {
+    // Prefix mode - check for duplicates
+    const escaped = escapeRegexSpecialChars(state.renderedMessage);
+
+    if (new RegExp('^\\s*' + escaped, 'i').test(originalMessage)) {
+      return { ...state, shouldSkip: true, skipReason: 'prefix already exists' };
+    }
+
+    if (state.ticket && new RegExp(`\\b${escapeRegexSpecialChars(state.ticket)}\\b`, 'i').test(originalMessage)) {
+      return { ...state, shouldSkip: true, skipReason: 'ticket already in message' };
+    }
+
+    const firstSeg = state.context.segs[0];
+    if (firstSeg && firstSeg !== 'HEAD' &&
+        new RegExp(`\\b${escapeRegexSpecialChars(firstSeg)}\\b`, 'i').test(originalMessage)) {
+      return { ...state, shouldSkip: true, skipReason: 'branch segment already in message' };
+    }
+
+    return {
+      ...state,
+      lines: [state.renderedMessage + originalMessage, ...state.lines.slice(1)]
+    };
+  }
 };
 
-// =============================================================================
-// Exports
-// =============================================================================
-
+// Re-export for compatibility
 export {
-  applyValidationRules,
-  processMessage,
   createRegexPattern,
   matchesAnyPattern,
   extractTicketFromBranch
