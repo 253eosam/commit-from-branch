@@ -1,6 +1,6 @@
 {
   "name": "@253eosam/commit-from-branch",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Flexible commit message templating from branch name (ticket/segments) for Husky prepare-commit-msg",
   "license": "MIT",
   "repository": {
