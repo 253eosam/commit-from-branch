@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2024-09-16
+
+### 🌐 New Features
+- **GitHub Pages Integration**: Added live demo deployment at https://253eosam.github.io/commit-from-branch/
+- **Automated Web Preview Deployment**: Separate workflow for deploying React demo to GitHub Pages
+- **Enhanced Release Automation**: Improved release notes generation with commit history and installation guides
+
+### 📚 Documentation Overhaul
+- **Professional README**: Complete redesign with badges, table of contents, and emoji sections
+- **Comprehensive Badge Collection**: NPM version, downloads, GitHub release, CI status, TypeScript ready
+- **Link Ecosystem**: Extensive links section connecting NPM, GitHub, documentation, and demo
+- **MIT License**: Added official MIT license file
+- **Package Metadata**: Enhanced keywords, funding links, and homepage URL
+
+### 🔧 Developer Experience
+- **CLAUDE.md**: Added comprehensive guide for future Claude Code instances
+- **Improved Project Structure**: Clear separation between NPM module and web demo
+- **Enhanced CI/CD**: Validation of both module and web preview builds in release pipeline
+
+### 📦 Package Improvements
+- **Better Keywords**: Enhanced discoverability on NPM with relevant search terms
+- **Funding Support**: Added GitHub Sponsors link
+- **Homepage Update**: GitHub Pages demo as primary homepage
+
 ## [0.2.4] - 2024-09-16
 
 ### 🚀 Release Process Improvements
