@@ -22,6 +22,10 @@ npm install @253eosam/commit-from-branch --save-dev
 
 > **Note**: This package requires Husky v9 as a peer dependency. npm will automatically warn you if it's not installed.
 
+## Demo
+
+🌐 **[Live Demo](https://253eosam.github.io/commit-from-branch/)** - Try the interactive demo to see how commit message templating works!
+
 ## Quick Start
 
 1. **Install Husky v9** (if not already installed):

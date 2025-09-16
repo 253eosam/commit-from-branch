@@ -10,6 +10,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm test` - Run all tests using Node.js built-in test runner
 - `npm run prepublishOnly` - Build before publishing (runs automatically)
 
+### Web Preview Development
+
+- `cd web-preview && npm run dev` - Start development server for React demo
+- `cd web-preview && npm run build` - Build demo for production
+- `cd web-preview && npm run preview` - Preview built demo locally
+
 ### Release Process
 
 - `npm run release:patch` - Bump patch version and publish

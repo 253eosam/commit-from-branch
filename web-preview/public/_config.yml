@@ -1,0 +1,3 @@
+# GitHub Pages에서 모든 파일을 처리하도록 설정
+include:
+  - "_*"
