@@ -55,4 +55,4 @@ declare const applyValidationRules: (state: ProcessingState) => ProcessingState;
 declare const processMessage: (state: ProcessingState) => ProcessingState;
 declare function run(opts?: RunOptions): number;
 
-export { applyValidationRules, createInitialState, messageProcessors, processMessage, run, validationRules };
+export { type CommitFromBranchConfig, type Context, type MessageProcessor, type ProcessingState, type RunOptions, type ValidationRule, applyValidationRules, createInitialState, messageProcessors, processMessage, run, validationRules };

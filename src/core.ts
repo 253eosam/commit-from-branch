@@ -266,3 +266,13 @@ export {
   applyValidationRules,
   processMessage
 };
+
+// Export types for external use
+export type {
+  CommitFromBranchConfig,
+  Context,
+  RunOptions,
+  ProcessingState,
+  ValidationRule,
+  MessageProcessor
+} from './types';

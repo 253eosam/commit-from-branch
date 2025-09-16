@@ -32,7 +32,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'web-preview/package-lock.json'
 
-      - name: Install dependencies
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Build root module
+        run: npm run build
+
+      - name: Install web-preview dependencies
         working-directory: ./web-preview
         run: npm ci
 
