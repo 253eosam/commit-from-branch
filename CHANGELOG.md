@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2024-09-16
+
+### 🚀 Release Process Improvements
+- **Enhanced Release Notes**: Improved GitHub Actions workflow to generate richer release notes
+- **Automatic Changelog**: Release notes now include CHANGELOG.md content and commit history
+- **Installation Guide**: Release notes automatically include installation instructions
+
+### 📚 Documentation Updates
+- **README Updates**: Updated installation guide to highlight Husky v9 peer dependency requirement
+- **CHANGELOG Format**: Improved changelog format with better structure and emojis
+- **CLAUDE.md**: Added comprehensive development guide for future Claude Code instances
+
 ## [0.2.3] - 2024-09-16
 
 ### ✨ New Features
