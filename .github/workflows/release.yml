@@ -104,7 +104,7 @@ jobs:
           echo "## 📦 Installation" >> release_notes.md
           echo "" >> release_notes.md
           echo "\`\`\`bash" >> release_notes.md
-          echo "npm install @253eosam/commit-from-branch@$VERSION" >> release_notes.md
+          echo "npm install commit-from-branch@$VERSION" >> release_notes.md
           echo "\`\`\`" >> release_notes.md
 
           if [ -f "release_notes.md" ]; then
@@ -143,5 +143,5 @@ jobs:
       - name: Success notification
         run: |
           echo "🎉 Release completed successfully!"
-          echo "📦 Package: https://www.npmjs.com/package/@253eosam/commit-from-branch"
+          echo "📦 Package: https://www.npmjs.com/package/commit-from-branch"
           echo "🏷️  Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/${{ steps.version.outputs.tag }}"

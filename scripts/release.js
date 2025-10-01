@@ -63,29 +63,14 @@ async function createRelease() {
   console.log('\n⬆️  Pushing to GitHub...');
   run('git push origin main');
   run(`git push origin v${currentVersion}`);
-  
-  // 4. Publish to NPM
-  console.log('\n📤 Publishing to NPM...');
-  run('npm publish');
-  
-  // 5. Create GitHub release (if gh CLI is available)
-  console.log('\n🎉 Creating GitHub release...');
-  try {
-    const changelog = extractChangelogForVersion(currentVersion);
-    const releaseTitle = `🚀 Release v${currentVersion}`;
-    
-    // Escape special characters in changelog
-    const escapedChangelog = changelog.replace(/`/g, '\\`').replace(/\$/g, '\\$');
-    
-    run(`gh release create v${currentVersion} --title "${releaseTitle}" --notes "${escapedChangelog}"`);
-    console.log('✅ GitHub release created successfully!');
-  } catch (error) {
-    console.log('⚠️  GitHub CLI not available or not authenticated.');
-    console.log('Please create the release manually on GitHub.');
-    console.log('Release notes saved to RELEASE_NOTES_v' + currentVersion + '.md');
-  }
-  
-  console.log(`\n🎉 Release v${currentVersion} completed successfully!`);
+
+  // 4. GitHub Actions will handle NPM publishing and GitHub release
+  console.log('\n✅ Pushed to GitHub! GitHub Actions will handle:');
+  console.log('   - NPM publishing');
+  console.log('   - GitHub release creation');
+
+  // 5. Done (GitHub Actions will complete the release)
+  console.log(`\n🎉 Release v${currentVersion} initiated successfully!`);
   console.log(`📦 Package: https://www.npmjs.com/package/${packageJson.name}`);
   console.log(`🏷️  Tag: https://github.com/${packageJson.repository.url.split('/').slice(-2).join('/').replace('.git', '')}/releases/tag/v${currentVersion}`);
 }
