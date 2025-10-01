@@ -2,14 +2,14 @@
 
 <div align="center">
 
-[![NPM Version](https://img.shields.io/npm/v/@253eosam/commit-from-branch?style=flat-square&color=blue)](https://www.npmjs.com/package/@253eosam/commit-from-branch)
-[![NPM Downloads](https://img.shields.io/npm/dm/@253eosam/commit-from-branch?style=flat-square&color=green)](https://www.npmjs.com/package/@253eosam/commit-from-branch)
+[![NPM Version](https://img.shields.io/npm/v/commit-from-branch?style=flat-square&color=blue)](https://www.npmjs.com/package/commit-from-branch)
+[![NPM Downloads](https://img.shields.io/npm/dm/commit-from-branch?style=flat-square&color=green)](https://www.npmjs.com/package/commit-from-branch)
 [![GitHub Release](https://img.shields.io/github/v/release/253eosam/commit-from-branch?style=flat-square&color=purple)](https://github.com/253eosam/commit-from-branch/releases)
-[![License](https://img.shields.io/npm/l/@253eosam/commit-from-branch?style=flat-square&color=orange)](https://github.com/253eosam/commit-from-branch/blob/main/LICENSE)
+[![License](https://img.shields.io/npm/l/commit-from-branch?style=flat-square&color=orange)](https://github.com/253eosam/commit-from-branch/blob/main/LICENSE)
 
 [![CI Status](https://img.shields.io/github/actions/workflow/status/253eosam/commit-from-branch/release.yml?style=flat-square&label=CI)](https://github.com/253eosam/commit-from-branch/actions)
 [![GitHub Pages](https://img.shields.io/github/deployments/253eosam/commit-from-branch/github-pages?style=flat-square&label=Demo)](https://253eosam.github.io/commit-from-branch/)
-[![Node.js](https://img.shields.io/node/v/@253eosam/commit-from-branch?style=flat-square&color=brightgreen)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/node/v/commit-from-branch?style=flat-square&color=brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue?style=flat-square)](https://www.typescriptlang.org/)
 
 </div>
@@ -51,7 +51,7 @@ Automatically formats your commit messages based on your branch name, extracting
 ## 📦 Installation
 
 ```bash
-npm install @253eosam/commit-from-branch --save-dev
+npm install commit-from-branch --save-dev
 ```
 
 > **Note**: This package requires Husky v9 as a peer dependency. npm will automatically warn you if it's not installed.
@@ -205,7 +205,7 @@ BRANCH_PREFIX_DRYRUN=1 git commit -m "test message"
 ## 🔌 Programmatic Usage
 
 ```typescript
-import { run } from "@253eosam/commit-from-branch";
+import { run } from "commit-from-branch";
 
 // Use with custom options
 const exitCode = run({
@@ -216,7 +216,7 @@ const exitCode = run({
 ```
 
 ```typescript
-import { initHusky } from "@253eosam/commit-from-branch/init";
+import { initHusky } from "commit-from-branch/init";
 
 // Setup Husky hook programmatically
 initHusky("/path/to/repo");
@@ -250,7 +250,7 @@ initHusky("/path/to/repo");
 ## 🔗 Links
 
 ### Package & Releases
-- **[📦 NPM Package](https://www.npmjs.com/package/@253eosam/commit-from-branch)** - Official NPM package
+- **[📦 NPM Package](https://www.npmjs.com/package/commit-from-branch)** - Official NPM package
 - **[🚀 GitHub Releases](https://github.com/253eosam/commit-from-branch/releases)** - Release notes and downloads
 - **[🌐 Live Demo](https://253eosam.github.io/commit-from-branch/)** - Interactive demo
 
@@ -258,7 +258,7 @@ initHusky("/path/to/repo");
 - **[💻 Source Code](https://github.com/253eosam/commit-from-branch)** - GitHub repository
 - **[🐛 Report Issues](https://github.com/253eosam/commit-from-branch/issues)** - Bug reports and feature requests
 - **[📊 CI/CD Pipeline](https://github.com/253eosam/commit-from-branch/actions)** - Build status and automation
-- **[📈 NPM Stats](https://npmcharts.com/compare/@253eosam/commit-from-branch)** - Download statistics
+- **[📈 NPM Stats](https://npmcharts.com/compare/commit-from-branch)** - Download statistics
 
 ### Documentation
 - **[📚 API Documentation](https://github.com/253eosam/commit-from-branch#-programmatic-usage)** - Programmatic usage guide
