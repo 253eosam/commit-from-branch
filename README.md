@@ -1,5 +1,9 @@
 # commit-from-branch
 
+> **⚠️ Package Migration Notice**
+> This package was previously published as [`@253eosam/commit-from-branch`](https://www.npmjs.com/package/@253eosam/commit-from-branch).
+> Please use [`commit-from-branch`](https://www.npmjs.com/package/commit-from-branch) instead. The scoped package is deprecated.
+
 <div align="center">
 
 [![NPM Version](https://img.shields.io/npm/v/commit-from-branch?style=flat-square&color=blue)](https://www.npmjs.com/package/commit-from-branch)
