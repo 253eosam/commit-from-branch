@@ -50,11 +50,15 @@ async function createRelease() {
   console.log('\n📦 Building and testing...');
   run('npm run build');
   run('npm test');
-  
-  // 2. Create git tag
+
+  // 2. Commit version changes and create git tag
+  console.log('\n📝 Committing version changes...');
+  run('git add package.json package-lock.json');
+  run(`git commit -m "${currentVersion}"`);
+
   console.log('\n🏷️  Creating git tag...');
   run(`git tag -a v${currentVersion} -m "Release v${currentVersion}"`);
-  
+
   // 3. Push to GitHub
   console.log('\n⬆️  Pushing to GitHub...');
   run('git push origin main');
