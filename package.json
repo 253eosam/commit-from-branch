@@ -1,6 +1,6 @@
 {
   "name": "commit-from-branch",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "🚀 Flexible commit message templating from branch name (ticket/segments) for Husky's prepare-commit-msg hook. Automatically extracts Jira-style tickets and supports customizable templates.",
   "keywords": [
     "commit",
