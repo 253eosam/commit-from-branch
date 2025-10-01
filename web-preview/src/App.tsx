@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { generatePreview, type CommitFromBranchConfig } from './core';
+import InfoBox from './components/InfoBox';
 import ConfigForm from './components/ConfigForm';
 import PreviewPanel from './components/PreviewPanel';
 import ExampleScenarios from './components/ExampleScenarios';
@@ -29,6 +30,10 @@ function App() {
       </header>
 
       <main className="app-main">
+        <div className="info-section">
+          <InfoBox />
+        </div>
+
         <div className="config-section">
           <ConfigForm 
             config={config} 
