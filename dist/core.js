@@ -3,14 +3,16 @@ import {
   createInitialState,
   messageProcessors,
   processMessage,
+  renderTemplate,
   run,
   validationRules
-} from "./chunk-EMG7656X.js";
+} from "./chunk-GLECL33F.js";
 export {
   applyValidationRules,
   createInitialState,
   messageProcessors,
   processMessage,
+  renderTemplate,
   run,
   validationRules
 };

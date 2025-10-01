@@ -151,6 +151,12 @@ var messageProcessors = [
       if (state.originalMessage === state.renderedMessage) {
         return { ...state, shouldSkip: true, skipReason: "message already matches template" };
       }
+      if (state.ticket) {
+        const ticketRegex = new RegExp(`\\b${escapeRegexSpecialChars(state.ticket)}\\b`, "i");
+        if (ticketRegex.test(state.originalMessage)) {
+          return { ...state, shouldSkip: true, skipReason: "ticket already in message" };
+        }
+      }
       return {
         ...state,
         lines: [state.renderedMessage, ...state.lines.slice(1)]

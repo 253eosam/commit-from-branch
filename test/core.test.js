@@ -223,19 +223,115 @@ describe('commit-from-branch core', () => {
       path.join(tempDir, 'package.json'),
       JSON.stringify(packageJson)
     );
-    
+
     // Message contains similar but not exact match (PROJ-124 vs PROJ-123)
     fs.writeFileSync(commitMsgPath, 'fix PROJ-124 related issue');
-    
+
     const result = run({
       argv: ['node', 'script', commitMsgPath],
-      env: { 
+      env: {
         ...process.env,
         BRANCH_PREFIX_DRYRUN: '1'
       },
       cwd: tempDir
     });
-    
+
+    assert.strictEqual(result, 0);
+  });
+
+  test('should not add prefix when full rendered format already exists at start', () => {
+    const packageJson = {
+      name: 'test-package',
+      commitFromBranch: {
+        format: '[${ticket}]',
+        fallbackFormat: '[${seg0}]'
+      }
+    };
+    fs.writeFileSync(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify(packageJson)
+    );
+
+    // Message already starts with the exact rendered format
+    fs.writeFileSync(commitMsgPath, '[PROJ-123] add new feature');
+
+    const result = run({
+      argv: ['node', 'script', commitMsgPath],
+      env: {
+        ...process.env,
+        BRANCH_PREFIX_DRYRUN: '1',
+        BRANCH_PREFIX_DEBUG: '1'
+      },
+      cwd: tempDir
+    });
+
+    const content = fs.readFileSync(commitMsgPath, 'utf8');
+    // Should not duplicate the prefix
+    assert.strictEqual(content, '[PROJ-123] add new feature');
+    assert.strictEqual(result, 0);
+  });
+
+  test('should not add prefix when rendered fallback format already exists', () => {
+    const packageJson = {
+      name: 'test-package',
+      commitFromBranch: {
+        format: '[${ticket}]',
+        fallbackFormat: '[${seg0}]'
+      }
+    };
+    fs.writeFileSync(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify(packageJson)
+    );
+
+    // Message on branch without ticket, already has segment prefix
+    fs.writeFileSync(commitMsgPath, '[feature] implement new authentication');
+
+    const result = run({
+      argv: ['node', 'script', commitMsgPath],
+      env: {
+        ...process.env,
+        BRANCH_PREFIX_DRYRUN: '1',
+        BRANCH_PREFIX_DEBUG: '1'
+      },
+      cwd: tempDir
+    });
+
+    const content = fs.readFileSync(commitMsgPath, 'utf8');
+    // Should not duplicate the prefix
+    assert.strictEqual(content, '[feature] implement new authentication');
+    assert.strictEqual(result, 0);
+  });
+
+  test('should skip when message already starts with ticket in correct format', () => {
+    const packageJson = {
+      name: 'test-package',
+      commitFromBranch: {
+        format: '${ticket}: ${msg}',
+        fallbackFormat: '[${seg0}] ${msg}'
+      }
+    };
+    fs.writeFileSync(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify(packageJson)
+    );
+
+    // Message already has the ticket at the start in the expected format
+    fs.writeFileSync(commitMsgPath, 'DEF-789: refactor user API endpoints');
+
+    const result = run({
+      argv: ['node', 'script', commitMsgPath],
+      env: {
+        ...process.env,
+        BRANCH_PREFIX_DRYRUN: '1',
+        BRANCH_PREFIX_DEBUG: '1'
+      },
+      cwd: tempDir
+    });
+
+    const content = fs.readFileSync(commitMsgPath, 'utf8');
+    // Should not duplicate - ticket already exists in message
+    assert.strictEqual(content, 'DEF-789: refactor user API endpoints');
     assert.strictEqual(result, 0);
   });
 });
