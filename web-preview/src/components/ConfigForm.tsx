@@ -82,7 +82,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
             className="form-input"
           />
           <small className="form-help">
-            Available tokens: {'${ticket}'}, {'${msg}'}, {'${branch}'}, {'${segs[0]}'}, {'${segs[1]}'}, etc.
+            Available tokens: {'${ticket}'}, {'${msg}'}, {'${branch}'}, {'${seg0}'}, {'${seg1}'}, {'${segments}'}, {'${prefix:n}'}, etc.
           </small>
         </div>
 
@@ -93,7 +93,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
             type="text"
             value={config.fallbackFormat || ''}
             onChange={(e) => updateConfig('fallbackFormat', e.target.value)}
-            placeholder="e.g., ${segs[0]}: ${msg}"
+            placeholder="e.g., ${seg0}: ${msg}"
             className="form-input"
           />
         </div>

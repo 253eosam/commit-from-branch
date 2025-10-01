@@ -33,7 +33,7 @@ npm run build
 
 - **includePattern**: Glob patterns for branches to include (e.g., `feature/*`, `bugfix/*`)
 - **format**: Template for commit messages when ticket is found (e.g., `${ticket}: ${msg}`)
-- **fallbackFormat**: Template when no ticket is found (e.g., `${segs[0]}: ${msg}`)
+- **fallbackFormat**: Template when no ticket is found (e.g., `${seg0}: ${msg}`)
 - **exclude**: Patterns to exclude certain sources
 
 ## Template Tokens
@@ -41,7 +41,7 @@ npm run build
 - `${ticket}`: Extracted ticket number (e.g., ABC-123)
 - `${msg}`: Original commit message
 - `${branch}`: Full branch name
-- `${segs[0]}`, `${segs[1]}`: Branch segments split by `/`
+- `${seg0}`, `${seg1}`, etc.: Individual branch segments split by `/`
 - `${segments}`: All segments joined with `/`
 - `${prefix:n}`: First n segments joined with `/`
 

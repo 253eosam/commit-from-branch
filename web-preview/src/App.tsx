@@ -8,7 +8,7 @@ import './App.css';
 const DEFAULT_CONFIG: CommitFromBranchConfig = {
   includePattern: ['*'],
   format: '${ticket}: ${msg}',
-  fallbackFormat: '${segs[0]}: ${msg}',
+  fallbackFormat: '${seg0}: ${msg}',
   exclude: []
 };
 
