@@ -1,16 +1,16 @@
-// Browser-compatible wrapper for commit-from-branch core logic
-import type { ProcessingState, CommitFromBranchConfig as OriginalConfig } from '@253eosam/commit-from-branch';
+// Browser-compatible wrapper - uses parent package core logic
+import type {
+  ProcessingState,
+  CommitFromBranchConfig as OriginalConfig,
+  Context as OriginalContext
+} from '../../dist/core.js';
+
+// Import renderTemplate from built parent package
+import { renderTemplate as parentRenderTemplate } from '../../dist/core.js';
 
 // Re-export types for compatibility
 export type CommitFromBranchConfig = OriginalConfig;
-
-export type Context = {
-  branch: string;
-  segs: string[];
-  ticket: string;
-  msg: string;
-  body: string;
-};
+export type Context = OriginalContext;
 
 export type ProcessedConfig = CommitFromBranchConfig & {
   includePatterns: string[];
@@ -22,7 +22,7 @@ export type ProcessedConfig = CommitFromBranchConfig & {
 export type PreviewState = ProcessingState;
 
 // =============================================================================
-// Browser-specific adaptations
+// Utility functions (minimal browser adaptations)
 // =============================================================================
 
 const createRegexPattern = (pattern: string): RegExp =>
@@ -37,29 +37,8 @@ const extractTicketFromBranch = (branch: string): string =>
 const escapeRegexSpecialChars = (str: string): string =>
   str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Simple template renderer (extracted from main module logic)
-export const renderTemplate = (tpl: string, ctx: Context): string => {
-  let out = String(tpl);
-
-  // ${prefix:n} → first n segments joined with '/'
-  out = out.replace(/\$\{prefix:(\d+)\}/g, (_m, n) => {
-    const k = Math.max(0, parseInt(n, 10) || 0);
-    return ctx.segs.slice(0, k).join('/') || '';
-  });
-
-  // ${seg0}, ${seg1}, ...
-  out = out.replace(/\$\{seg(\d+)\}/g, (_m, i) => {
-    const idx = parseInt(i, 10) || 0;
-    return ctx.segs[idx] || '';
-  });
-
-  return out
-    .replace(/\$\{ticket\}/g, ctx.ticket || '')
-    .replace(/\$\{branch\}/g, ctx.branch || '')
-    .replace(/\$\{segments\}/g, ctx.segs.join('/'))
-    .replace(/\$\{msg\}/g, ctx.msg || '')
-    .replace(/\$\{body\}/g, ctx.body || '');
-};
+// Re-export renderTemplate from parent package
+export const renderTemplate = parentRenderTemplate;
 
 // =============================================================================
 // Preview State Creation (browser-adapted)
@@ -103,7 +82,7 @@ export const createPreviewState = (
 };
 
 // =============================================================================
-// Main Preview Function
+// Main Preview Function (uses same logic as parent package)
 // =============================================================================
 
 export const generatePreview = (
@@ -127,13 +106,20 @@ export const generatePreview = (
     return { ...state, shouldSkip: true, skipReason: 'includePattern mismatch' };
   }
 
-  // Apply message processing logic
+  // Apply message processing logic (SAME AS PARENT CORE)
   const hasMessageToken = /\$\{msg\}|\$\{body\}/.test(state.template);
 
   if (hasMessageToken) {
+    // Template replacement mode
     if (originalMessage === state.renderedMessage) {
       return { ...state, shouldSkip: true, skipReason: 'message already matches template' };
     }
+
+    // Check if ticket already exists in message (even in template replacement mode)
+    if (state.ticket && new RegExp(`\\b${escapeRegexSpecialChars(state.ticket)}\\b`, 'i').test(originalMessage)) {
+      return { ...state, shouldSkip: true, skipReason: 'ticket already in message' };
+    }
+
     return { ...state, lines: [state.renderedMessage, ...state.lines.slice(1)] };
   } else {
     // Prefix mode - check for duplicates
